@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace 선언 -->
+<mapper namespace= "project">
+
+	<insert id="makerInsert" parameterType="com.crowd.funding.project.model.ProjectDTO" useGeneratedKeys="true"
+		keyProperty="maker_idx">
+		insert into maker(mem_idx)
+		values(#{mem_idx})
+	</insert>
+	
+	<insert id="add" parameterType="com.crowd.funding.project.model.ProjectDTO" useGeneratedKeys="true"   
+  		keyProperty="pro_id">
+  			insert into project(pro_status, mem_idx, maker_idx)
+			values(1,#{mem_idx}, #{maker_idx})
+	</insert>
+	
+	<update id="maker_update">
+		update project
+		set maker_idx=#{maker_idx}
+		where pro_id=#{pro_id}
+	</update>
+	
+	<update id="save1">
+		update project
+		set pro_category=#{pro_category}, pro_name=#{pro_name},pro_price=#{pro_price},
+			pro_keyword1=#{pro_keyword1}, pro_keyword2=#{pro_keyword2},pro_keyword3=#{pro_keyword3},
+			pro_imageURL=#{pro_imageURL}, pro_start=#{pro_start}, pro_end=#{pro_end}
+		where pro_id=#{pro_id} limit 1
+	</update>
+	
+	<select id ="pro_list" resultType="com.crowd.funding.project.model.ProjectDTO">
+		select *, TIMESTAMPDIFF(DAY, CURDATE(), `pro_end`) day from project order by pro_id desc
+	</select>
+	
+	<select id ="pro_detail" resultType="com.crowd.funding.project.model.ProjectDTO">
+		select *, TIMESTAMPDIFF(DAY, CURDATE(), `pro_end`) day from project where pro_id = #{pro_id}
+	</select>
+	
+	<select id ="pro_news" resultType="com.crowd.funding.community.model.NewsDTO">
+		select * from com_news where pro_id = #{pro_id} order by news_idx desc
+	</select>
+	
+	<insert id="insert_news">
+		INSERT INTO com_news (pro_id, maker_idx, news_title, news_content, news_date) 
+		VALUES (#{pro_id}, #{maker_idx}, #{news_title}, #{news_content}, now())
+	</insert>
+	
+	<select id ="pro_name" resultType="String">
+		select pro_name from project where pro_id = #{pro_id}
+	</select>
+	
+	<select id ="pro_id" resultType="int">
+		select pro_id from project where pro_name = #{pro_name}
+	</select>
+	
+	<select id ="my_pro" resultType="com.crowd.funding.project.model.ProjectDTO">
+		select * from project where mem_idx=#{mem_idx}
+	</select>
+	
+	<delete id="my_delete">
+		delete from project where pro_id=#{pro_id}
+	</delete>
+	
+	<update id="story_update">
+		update project
+		set pro_video=REPLACE(#{pro_video}, "watch?v=", "embed/"),
+		 	pro_summary=#{pro_summary}, pro_content=#{pro_content}
+		where pro_id=#{pro_id} limit 1
+	</update>
+	
+	<update id="request">
+		update project
+		set pro_status=2
+		where pro_id=#{pro_id} limit 1
+	</update>
+	<insert id = "reward_insert" useGeneratedKeys="true" keyProperty="reward_id">
+		INSERT INTO reward_item (pro_id, mem_idx, reward_title, reward_price, reward_sell_count,
+		reward_option_detail, shipment_start, delivery_fee, reward_description, op_val) 
+		VALUES 
+		<foreach separator="," item="item" collection="list">
+           (#{item.pro_id},#{item.mem_idx},#{item.reward_title},#{item.reward_price},
+           #{item.reward_sell_count},#{item.reward_option_detail},#{item.shipment_start},
+           #{item.delivery_fee},#{item.reward_description},#{item.op_val})
+        </foreach>
+	</insert>
+	<insert id = "option_insert">
+		INSERT INTO option_item (reward_id, op_name, op_limit_qty)
+		VALUES
+		<foreach separator="," item="item" collection="list">
+		(#{item.reward_id}, #{item.op_name}, #{item.op_limit_qty})
+		</foreach>
+	</insert>
+	<delete id = "reward_del">
+		DELETE FROM reward_item WHERE pro_id = #{pro_id}
+	</delete>
+	<select id = "option_sel" resultType="com.crowd.funding.reward.domain.OptionDTO">
+		SELECT t1.op_id, t1.reward_id, t1.op_name, t1.op_limit_qty ,t1.op_count
+		FROM 
+		(SELECT t3.op_id, t3.op_name, t3.op_limit_qty, t3.reward_id, t4.op_count 
+		FROM option_item AS t3 LEFT JOIN 
+		(SELECT sum(op_count) as op_count, op_id FROM option_order group by op_id) AS t4
+		ON t3.op_id = t4.op_id) AS t1 LEFT JOIN
+		(SELECT reward_id, pro_id FROM REWARD_ITEM) AS t2 
+		ON t1.reward_id = t2.reward_id 
+		WHERE t2.pro_id = #{pro_id}; 
+	</select>
+	
+</mapper>
